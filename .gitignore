@@ -1,0 +1,11 @@
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+Release/
+Debug/
+_vimrc_local.vim
+Readme.txt
+tags
+types_c.taghl
+stdafx.*
+targetver.h
