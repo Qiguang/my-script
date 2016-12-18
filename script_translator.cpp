@@ -28,6 +28,10 @@ void script_translator::translate() {
 void script_translator::initInternalData() {
 	InsTranlator.insert(make_pair("ADD", &script_translator::ADD_2Bin));
 	InsTranlator.insert(make_pair("ASSIGN", &script_translator::ASSIGN_2Bin));
+	codeblock_pattern.push_back(regex("^if("));
+	codeblock_pattern.push_back(regex("^while("));
+	pretranslate_pattern.push_back(regex("^[_A-zA-z][_A-Za-z0-9]+\\s*=\\s*(.+)$"));
+	pretranslate_pattern.push_back(regex(""));
 }
 
 /**************************************************************************************************
@@ -51,14 +55,23 @@ void script_translator::preprocess() {
 	do {
 		getline(SrcFile, line); 
 		std::cout << line << std::endl;
-		// TODO remove white spaces
-		regex e("\\s+");
-		line = regex_replace(line, e, string(""), regex_constants::match_any);
+		replace_defination(line);
+		remove_whitespace(line);
+		if (line.empty()) continue;
 		PlainSrc << line << std::endl;
 	} while (SrcFile.good());
-	
+
 	CloseFile(SrcFile);
 	CloseFile(PlainSrc);
+}
+
+void script_translator::replace_defination(string& line) {
+	// TODO: 
+}
+
+void script_translator::remove_whitespace(string& line) {
+	regex e("\\s+");
+	line =  regex_replace(line, e, string(""), regex_constants::match_any);
 }
 
 /*****************************************************************
@@ -81,6 +94,8 @@ void script_translator::pretranslate() {
 
 	string line;
 	do {
+		syntax_check();
+		pretranslate_codeblock(get_codeblock(PlainSrc));
 		getline(PlainSrc, line); 
 		std::cout << line << std::endl;
 		regex e("^([_a-zA-Z0-9])+=(\\d+)$");
@@ -186,4 +201,21 @@ bool script_translator::ASSIGN_2Bin(const string& instruction, vector<uint8_t>& 
 	uint8_t const_loc = _symbol_store.get_const_loc(sm[3]);
 	bin.push_back(const_loc);
 	return true;
+}
+
+void script_translator::syntax_check() {
+
+}
+stringstream script_translator::get_codeblock(fstream& src) {
+	string line;
+	getline(src, line);
+	smatch sm;
+	for (auto i = codeblock_pattern.cbegin(); i != codeblock_pattern.cend(); ++i) {
+		if (regex_match(line, sm, *i)) {
+		}
+	}
+	return stringstream(line);
+}
+void script_translator::pretranslate_codeblock(stringstream codeblock) {
+
 }

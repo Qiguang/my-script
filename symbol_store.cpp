@@ -1,6 +1,6 @@
 #include "symbol_store.h"
 
-symbol_store::symbol_store () : var_num(0), const_num(0){
+symbol_store::symbol_store () : const_num(0), var_num(0){
 #define MY_INSTRUCTION(name, token) func_store.insert(make_pair(name, static_cast<uint8_t>(token)));
 #include "api_defs.h"
 #undef MY_INSTRUCTION

@@ -1,0 +1,12 @@
+a = 20
+
+if (a < 40) {
+
+	printf("a < 40");
+}
+
+while (a > 10) {
+	printf("a = %d\n", a);
+}
+
+printf("exit script");

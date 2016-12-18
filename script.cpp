@@ -1,7 +1,6 @@
 // script.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
 #include <regex>
 #include "script_defs.h"
 #include "script_translator.h"
