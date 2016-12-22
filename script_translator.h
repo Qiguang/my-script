@@ -10,7 +10,8 @@
 #include "symbol_store.h"
 #include <list>
 #include <regex>
-
+#include <stack>
+#include <sstream>
 using namespace std;
 
 class script_translator
@@ -34,17 +35,20 @@ private:
 	bool CloseFile(fstream& stream);
 	typedef bool (script_translator::*Ins2Bin)(const string&, vector<uint8_t>&);
 	map<string/* instructions */, Ins2Bin /* parameter handler*/> InsTranlator;
-	list<regex> codeblock_pattern;
-	list<regex> pretranslate_pattern;
 	bool ADD_2Bin(const string& instruction, vector<uint8_t>& bin);
-	bool ASSIGN_2Bin(const string& instruction, vector<uint8_t>& bin);
+	bool MOV_2Bin(const string& instruction, vector<uint8_t>& bin);
 	void replace_defination(string& line);
 	void remove_whitespace(string& line);
 	void initInternalData();
 	void syntax_check();
-	stringstream get_codeblock(fstream& src);
-	void pretranslate_codeblock(stringstream codeblock);
+	stringstream get_codeblock(istream& src);
+	void break_codeblock(stringstream& codeblock, stack<list<string> >&result);
+	string pretranslate_codeblock(stringstream codeblock);
 	symbol_store _symbol_store;
+	string pretrans_assign(stringstream& codeblock, const smatch& sm);
+	string pretrans_compare(stringstream& codeblock, const smatch& sm);
+	string pretrans_if(stringstream& codeblock, const smatch& sm);
+	string pretrans_while(stringstream& codeblock, const smatch& sm);
 };
 
 

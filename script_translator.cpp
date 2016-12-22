@@ -1,5 +1,6 @@
 #include "script_translator.h"
-#include <regex>
+#include "pretrans.h"
+
 script_translator::script_translator(string src_name) : m_SrcName(src_name), m_initalized(false) {
 	if (m_SrcName.empty()) return;
 	size_t pos = m_SrcName.find(".mys");
@@ -27,11 +28,7 @@ void script_translator::translate() {
 
 void script_translator::initInternalData() {
 	InsTranlator.insert(make_pair("ADD", &script_translator::ADD_2Bin));
-	InsTranlator.insert(make_pair("ASSIGN", &script_translator::ASSIGN_2Bin));
-	codeblock_pattern.push_back(regex("^if("));
-	codeblock_pattern.push_back(regex("^while("));
-	pretranslate_pattern.push_back(regex("^[_A-zA-z][_A-Za-z0-9]+\\s*=\\s*(.+)$"));
-	pretranslate_pattern.push_back(regex(""));
+	InsTranlator.insert(make_pair("MOV", &script_translator::MOV_2Bin));
 }
 
 /**************************************************************************************************
@@ -95,25 +92,14 @@ void script_translator::pretranslate() {
 	string line;
 	do {
 		syntax_check();
-		pretranslate_codeblock(get_codeblock(PlainSrc));
-		getline(PlainSrc, line); 
-		std::cout << line << std::endl;
-		regex e("^([_a-zA-Z0-9])+=(\\d+)$");
-		smatch sm;
-		if (!regex_match(line, sm, e)) {
-			continue;
-		}
-		std::cout << sm.size() << "matches in this line" << std::endl;
-		std::cout << "they are: " << std::endl;
-		for (size_t i = 0; i < sm.size(); ++i) {
-			std::cout << sm[i] << std::endl;
-		}
-		ObjFile << "ASSIGN";
-		for (size_t i = 1; i < sm.size(); ++i) {
-			ObjFile << " " << sm[i];
-		}
-		ObjFile << std::endl;
 	} while (PlainSrc.good());
+
+	pretrans _pretrans(&_symbol_store);
+	_pretrans.pretranslate(PlainSrc, ObjFile);
+#if 0
+		ObjFile << pretranslate_codeblock(get_codeblock(PlainSrc));
+		ObjFile << endl;
+#endif
 	
 	CloseFile(ObjFile);
 	CloseFile(PlainSrc);
@@ -135,6 +121,7 @@ void script_translator::trans2bin() {
 		return;
 	}
 	string line;
+#if 0
 	do {
 		getline(ObjFile, line);
 		regex e("^(\\w+)\\s");
@@ -155,6 +142,8 @@ void script_translator::trans2bin() {
 			
 		BinFile.write((const char*)bin_trans_result.data(), bin_trans_result.size());
 	} while (ObjFile.good());
+
+#endif
 	CloseFile(ObjFile);
 	CloseFile(BinFile);
 }
@@ -189,12 +178,12 @@ bool script_translator::CreateFile(fstream& stream, string& Name) {
 bool script_translator::ADD_2Bin(const string& instruction, vector<uint8_t>& bin) {
 	return true;
 }
-bool script_translator::ASSIGN_2Bin(const string& instruction, vector<uint8_t>& bin) {
+bool script_translator::MOV_2Bin(const string& instruction, vector<uint8_t>& bin) {
 	regex e("^(.+)\\s+(.+)\\s(.+)$");
 	smatch sm;
 	regex_match(instruction, sm, e);
 	uint8_t func_token;
-	_symbol_store.get_func_token(sm[1], func_token);
+	_symbol_store.get_ins_token(sm[1], func_token);
 	bin.push_back(func_token);
 	uint8_t var_loc = _symbol_store.get_var_loc(sm[2]);
 	bin.push_back(var_loc);
@@ -204,18 +193,6 @@ bool script_translator::ASSIGN_2Bin(const string& instruction, vector<uint8_t>& 
 }
 
 void script_translator::syntax_check() {
-
-}
-stringstream script_translator::get_codeblock(fstream& src) {
-	string line;
-	getline(src, line);
-	smatch sm;
-	for (auto i = codeblock_pattern.cbegin(); i != codeblock_pattern.cend(); ++i) {
-		if (regex_match(line, sm, *i)) {
-		}
-	}
-	return stringstream(line);
-}
-void script_translator::pretranslate_codeblock(stringstream codeblock) {
+	printf("[%s][%s]\n", __FUNCTION__,  __FILE__);
 
 }
