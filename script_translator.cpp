@@ -27,8 +27,17 @@ void script_translator::translate() {
 }
 
 void script_translator::initInternalData() {
-	InsTranlator.insert(make_pair("ADD", &script_translator::ADD_2Bin));
-	InsTranlator.insert(make_pair("MOV", &script_translator::MOV_2Bin));
+	InsTranlator.insert(make_pair("ADD",        &script_translator::ADD_2Bin));
+	InsTranlator.insert(make_pair("MOV",        &script_translator::MOV_2Bin));
+#if 0
+	InsTranlator.insert(make_pair("LT",         &script_translator::LT_2Bin));
+	InsTranlator.insert(make_pair("LE",         &script_translator::LE_2Bin));
+	InsTranlator.insert(make_pair("GT",         &script_translator::GT_2Bin));
+	InsTranlator.insert(make_pair("GE",         &script_translator::GE_2Bin));
+	InsTranlator.insert(make_pair("CALL",       &script_translator::CALL_2Bin));
+	InsTranlator.insert(make_pair("CGOTO",      &script_translator::CGOTO_2Bin));
+	InsTranlator.insert(make_pair("GOTO",       &script_translator::GOTO_2Bin));
+#endif
 }
 
 /**************************************************************************************************
@@ -90,16 +99,14 @@ void script_translator::pretranslate() {
 	}
 
 	string line;
+#if 0  // syntax check has not implemented currently
 	do {
 		syntax_check();
 	} while (PlainSrc.good());
+#endif
 
 	pretrans _pretrans(&_symbol_store);
 	_pretrans.pretranslate(PlainSrc, ObjFile);
-#if 0
-		ObjFile << pretranslate_codeblock(get_codeblock(PlainSrc));
-		ObjFile << endl;
-#endif
 	
 	CloseFile(ObjFile);
 	CloseFile(PlainSrc);
@@ -121,29 +128,41 @@ void script_translator::trans2bin() {
 		return;
 	}
 	string line;
-#if 0
 	do {
 		getline(ObjFile, line);
-		regex e("^(\\w+)\\s");
+		regex e("#?\\b\\w+\\b|\"[^\"]*\"");	
 		smatch sm;
-		if (!regex_search(line, sm, e)) continue;
-		auto iter = InsTranlator.find(sm[1]);
-		vector<uint8_t> bin_trans_result;
-		if (iter == InsTranlator.end()) {
-			std::cout << "unknown instruction at TODO line" << std::endl;
-			continue;
-		}
-		
-		bool success = (this->*(iter->second))(line, bin_trans_result);
-		if (!success) {
-			std::cout << "cannot translate line TODO" << std::endl;
-			continue;
+		uint8_t binary = 0;
+		// is it a label definition?
+		string label_name;
+		if (isLabelDef(line, label_name)) _symbol_store.store_label(label_name);
+		else
+		while (regex_search(line, sm, e)) {
+			// if it is a string
+			if (isString(sm[0].str())) {
+				// add to string store
+			} else if (isConst(sm[0].str())) { // if it is a const
+				binary = _symbol_store.get_const_offs(sm[0]);
+			} else if (isLabelRef(sm[0].str(), label_name)) { // if it is a label reference
+				if (!_symbol_store.get_label_offs(sm[0], binary)) {
+					unsolved_label.push_back(make_pair(label_name, BinFile.tellp));
+					binary = 0;
+				}
+			// else it should be a instruction or a api call
+			} else if (_symbol_store.get_ins_token(sm[0], binary)) {
+				
+			} else if (_symbol_store.get_api_token(sm[0], binary)) {
+				
+			} else {
+				// error: unknown symbol
+				printf("unknown symbol [%s]\n", __FUNCTION__);
+			}
+			BinFile.write(&binary, sizeof(binary));
+			line = sm.suffix();
 		}
 			
-		BinFile.write((const char*)bin_trans_result.data(), bin_trans_result.size());
 	} while (ObjFile.good());
 
-#endif
 	CloseFile(ObjFile);
 	CloseFile(BinFile);
 }
@@ -175,6 +194,55 @@ bool script_translator::CreateFile(fstream& stream, string& Name) {
 	OpenFile(stream, Name);	
 	return true;
 }
+bool script_translator::Obj2Bin(const string& instruction, vector<uint8_t>& bin) {
+	regex e("\\b\\w+\\b:?|\"[^\"]*\"");	
+	smatch sm;
+	uint8_t binary = 0;
+	string str = instruction;
+	while (regex_search(str, sm, e)) {
+		// if it is a string
+		if (isString(sm[0].str())) {
+			// add to string store
+		} else if (isConst(sm[0].str())) { // if it is a const
+			binary = _symbol_store.get_const_offs(sm[0]);
+		} else if (isLabelRef(sm[0].str())) { // if it is a label
+			binary = _symbol_store.get_label_offs(sm[0]);
+		// else it should be a instruction or a api call
+		} else if (_symbol_store.get_ins_token(sm[0], binary)) {
+			
+		} else if (_symbol_store.get_api_token(sm[0], binary)) {
+			
+		} else {
+			// error: unknown symbol
+			printf("unknown symbol [%s]\n", __FUNCTION__);
+		}
+		bin.push_back(binary);
+		str = sm.suffix();
+	}
+
+}
+bool script_translator::isString(string& str) {
+	if (!str.empty() && str.front()=='"' && str.end()=='"') return true;
+	return false;
+}
+bool script_translator::isConst(string& str) {
+	if (!str.empty() && regex_match(str, regex("^\\d+$"))) return true;
+	return false;
+}
+bool script_translator::isLabelRef(string& str, string& label_name) {
+	if (!str.empty() && str.front()=='#') {
+		label_name=str.substr(sizeof('#'));
+		return true;
+	}
+	return false;
+}
+bool script_translator::isLabelDef(string& str, string& label_name) {
+	if (!str.empty() && str.front()==':') {
+		label_name=str.substr(0, str.length()-sizeof(':'));
+		return true;
+	}
+	return false;
+}
 bool script_translator::ADD_2Bin(const string& instruction, vector<uint8_t>& bin) {
 	return true;
 }
@@ -185,13 +253,37 @@ bool script_translator::MOV_2Bin(const string& instruction, vector<uint8_t>& bin
 	uint8_t func_token;
 	_symbol_store.get_ins_token(sm[1], func_token);
 	bin.push_back(func_token);
-	uint8_t var_loc = _symbol_store.get_var_loc(sm[2]);
-	bin.push_back(var_loc);
-	uint8_t const_loc = _symbol_store.get_const_loc(sm[3]);
-	bin.push_back(const_loc);
+	uint8_t var_offs = _symbol_store.get_var_offs(sm[2]);
+	bin.push_back(var_offs);
+	uint8_t const_offs = _symbol_store.get_const_offs(sm[3]);
+	bin.push_back(const_offs);
+	return true;
+}
+#if 0
+
+bool script_translator::LT_2Bin(const string& instruction, vector<uint8_t>& bin) {
+	return true;
+}
+bool script_translator::LE_2Bin(const string& instruction, vector<uint8_t>& bin) {
+	return true;
+}
+bool script_translator::GT_2Bin(const string& instruction, vector<uint8_t>& bin) {
+	return true;
+}
+bool script_translator::GE_2Bin(const string& instruction, vector<uint8_t>& bin) {
+	return true;
+}
+bool script_translator::CALL_2Bin(const string& instruction, vector<uint8_t>& bin) {
+	return true;
+}
+bool script_translator::CGOTO_2Bin(const string& instruction, vector<uint8_t>& bin) {
+	return true;
+}
+bool script_translator::GOTO_2Bin(const string& instruction, vector<uint8_t>& bin) {
 	return true;
 }
 
+#endif
 void script_translator::syntax_check() {
 	printf("[%s][%s]\n", __FUNCTION__,  __FILE__);
 

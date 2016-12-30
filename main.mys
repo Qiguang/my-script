@@ -1,12 +1,15 @@
 a = 20
 b < 10
 if (a < 40) {
-
-	printf("a < 40")
+	a < 40
 }
 
 while (a > 10) {
 	printf("a = %d\n", a)
 }
+
+func_a()
+
+func_b(abc)
 
 printf("exit script");

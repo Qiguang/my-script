@@ -41,6 +41,10 @@ private:
 	void remove_whitespace(string& line);
 	void initInternalData();
 	void syntax_check();
+	bool isString(string& str);
+	bool isConst(string& str);
+	bool isLabelRef(string& str);
+	bool Obj2Bin(const string& instruction, vector<uint8_t>& bin);
 	stringstream get_codeblock(istream& src);
 	void break_codeblock(stringstream& codeblock, stack<list<string> >&result);
 	string pretranslate_codeblock(stringstream codeblock);
